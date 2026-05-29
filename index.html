@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Расходы</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Unbounded:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f0f0f; --surface: #1a1a1a; --surface2: #242424;
+    --border: #2e2e2e; --accent: #c8f135; --accent2: #f1c835;
+    --text: #f0f0f0; --muted: #555; --danger: #ff5555;
+    --font: 'JetBrains Mono', monospace;
+    --display: 'Unbounded', sans-serif;
+  }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+
+  /* HEADER */
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--bg); border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo { font-family: var(--display); font-size: 14px; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; }
+  .tabs { display: flex; gap: 2px; }
+  .tab-btn {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--muted); font-family: var(--font); font-size: 9px;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    padding: 6px 12px; border-radius: 3px; cursor: pointer; transition: all 0.15s;
+  }
+  .tab-btn.active { background: var(--accent); color: #0f0f0f; border-color: var(--accent); }
+
+  /* BODY */
+  main { padding: 20px; max-width: 600px; margin: 0 auto; }
+
+  /* CARD */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 18px; margin-bottom: 14px; }
+  .card-title { font-size: 9px; text-transform: uppercase; letter-spacing: 3px; color: var(--muted); margin-bottom: 16px; }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .card-header .card-title { margin-bottom: 0; }
+
+  /* FORM */
+  .field { margin-bottom: 13px; }
+  label { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-bottom: 6px; }
+  input, select, textarea {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 3px; color: var(--text); font-family: var(--font);
+    font-size: 13px; padding: 10px 12px; outline: none;
+    transition: border-color 0.15s; -webkit-appearance: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: none; height: 58px; }
+  .amount-wrap { position: relative; }
+  .amount-wrap input { font-size: 22px; font-weight: 700; padding-right: 36px; }
+  .currency { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 13px; pointer-events: none; }
+
+  .btn-add {
+    width: 100%; background: var(--accent); color: #0f0f0f;
+    border: none; border-radius: 3px; font-family: var(--display);
+    font-size: 11px; font-weight: 700; letter-spacing: 1px;
+    padding: 13px; cursor: pointer; margin-top: 4px;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn-add:active { transform: scale(0.98); }
+  .btn-add:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .status { font-size: 11px; margin-top: 10px; padding: 9px 12px; border-radius: 3px; display: none; }
+  .status.ok { display: block; background: #1a2e00; color: var(--accent); border: 1px solid var(--accent); }
+  .status.err { display: block; background: #2e0000; color: var(--danger); border: 1px solid var(--danger); }
+
+  /* STATS */
+  .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 14px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 14px; }
+  .stat-label { font-size: 8px; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-bottom: 8px; }
+  .stat-value { font-family: var(--display); font-size: 15px; font-weight: 700; color: var(--accent); line-height: 1.2; }
+  .stat-sub { font-size: 9px; color: #333; margin-top: 4px; }
+
+  /* CHART */
+  .chart-bars { display: flex; align-items: flex-end; gap: 5px; height: 100px; padding-top: 8px; }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+  .bar { width: 100%; background: var(--accent); border-radius: 2px 2px 0 0; min-height: 3px; }
+  .bar-labels { display: flex; gap: 5px; margin-top: 6px; }
+  .bar-lbl { flex: 1; text-align: center; font-size: 8px; color: var(--muted); }
+
+  /* CAT LIST */
+  .cat-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .cat-name { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; width: 85px; flex-shrink: 0; }
+  .cat-track { flex: 1; height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .cat-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+  .cat-amt { font-size: 11px; font-weight: 600; width: 75px; text-align: right; flex-shrink: 0; }
+
+  /* TX LIST */
+  .tx-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #1e1e1e; }
+  .tx-row:last-child { border-bottom: none; }
+  .tx-date { font-size: 9px; color: var(--muted); width: 65px; flex-shrink: 0; }
+  .tx-cat { font-size: 8px; text-transform: uppercase; letter-spacing: 0.5px; width: 75px; flex-shrink: 0; }
+  .tx-comment { font-size: 11px; color: #888; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tx-amount { font-size: 12px; font-weight: 600; color: var(--accent2); flex-shrink: 0; }
+
+  .empty { font-size: 11px; color: #333; text-align: center; padding: 20px; }
+  .refresh-btn {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    font-family: var(--font); font-size: 9px; padding: 4px 10px;
+    border-radius: 2px; cursor: pointer; letter-spacing: 1px; transition: all 0.15s;
+  }
+  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .loader { height: 2px; background: var(--border); border-radius: 1px; margin-bottom: 10px; overflow: hidden; display: none; }
+  .loader.active { display: block; }
+  .loader::after { content: ''; display: block; height: 100%; background: var(--accent); width: 30%; animation: slide 1s infinite linear; }
+  @keyframes slide { from { transform: translateX(-200%); } to { transform: translateX(500%); } }
+
+  /* hidden tab */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">РАСХОДЫ</div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('add')">Добавить</button>
+    <button class="tab-btn" onclick="switchTab('dash')">Дашборд</button>
+  </div>
+</header>
+
+<main>
+  <!-- ADD TAB -->
+  <div class="tab-content active" id="tab-add">
+    <div class="card">
+      <div class="card-title">Новая трата</div>
+      <div class="field">
+        <label>Сумма</label>
+        <div class="amount-wrap">
+          <input type="number" id="amount" placeholder="0" min="0" inputmode="decimal">
+          <span class="currency">₽</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Категория</label>
+        <select id="category">
+          <option>Еда</option>
+          <option>Транспорт</option>
+          <option>Жильё</option>
+          <option>Развлечения</option>
+          <option>Здоровье</option>
+          <option>Прочее</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Дата</label>
+        <input type="date" id="date">
+      </div>
+      <div class="field">
+        <label>Комментарий</label>
+        <textarea id="comment" placeholder="Необязательно..."></textarea>
+      </div>
+      <button class="btn-add" id="submitBtn" onclick="addExpense()">ДОБАВИТЬ</button>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Последние 5</div>
+        <button class="refresh-btn" onclick="loadData()">↻</button>
+      </div>
+      <div id="recent-list"><div class="empty">Загрузка...</div></div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD TAB -->
+  <div class="tab-content" id="tab-dash">
+    <div class="loader" id="loader"></div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Месяц</div>
+        <div class="stat-value" id="s-month">—</div>
+        <div class="stat-sub" id="s-month-c">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Сегодня</div>
+        <div class="stat-value" id="s-today">—</div>
+        <div class="stat-sub" id="s-today-c">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Всего</div>
+        <div class="stat-value" id="s-total">—</div>
+        <div class="stat-sub" id="s-total-c">—</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">7 дней</div>
+        <button class="refresh-btn" onclick="loadData()">↻</button>
+      </div>
+      <div class="chart-bars" id="chart-bars"></div>
+      <div class="bar-labels" id="chart-labels"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">По категориям (месяц)</div>
+      <div id="cat-list"><div class="empty">Нет данных</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Все транзакции</div>
+      <div id="all-list"><div class="empty">Нет данных</div></div>
+    </div>
+  </div>
+</main>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbyu7T5p5cvEpdsDf7yydAMg6m6o718w2fYCT7X-2gYnPFjxuy00ljxFX0q9iQT1CldNbA/exec';
+
+const CAT_COLORS = {
+  'Еда': '#c8f135', 'Транспорт': '#35c8f1', 'Жильё': '#f1c835',
+  'Развлечения': '#f135c8', 'Здоровье': '#35f1c8', 'Прочее': '#8888aa'
+};
+
+let allData = [];
+
+function fmt(n) {
+  return Number(n).toLocaleString('ru-RU', { maximumFractionDigits: 0 }) + ' ₽';
+}
+function today() { return new Date().toISOString().split('T')[0]; }
+
+document.getElementById('date').value = today();
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.querySelectorAll('.tab-btn')[name === 'add' ? 0 : 1].classList.add('active');
+}
+
+async function loadData() {
+  document.getElementById('loader').classList.add('active');
+  try {
+    const res = await fetch(API + '?t=' + Date.now());
+    const json = await res.json();
+    if (json.success) {
+      allData = json.data || [];
+      renderRecent();
+      renderStats();
+      renderChart();
+      renderCats();
+      renderAll();
+    }
+  } catch(e) { console.error(e); }
+  document.getElementById('loader').classList.remove('active');
+}
+
+function renderRecent() {
+  const el = document.getElementById('recent-list');
+  const recent = [...allData].reverse().slice(0, 5);
+  if (!recent.length) { el.innerHTML = '<div class="empty">Нет транзакций</div>'; return; }
+  el.innerHTML = recent.map(r => `
+    <div class="tx-row">
+      <div class="tx-date">${String(r.date).slice(0,10)}</div>
+      <div class="tx-cat" style="color:${CAT_COLORS[r.category]||'#888'}">${r.category}</div>
+      <div class="tx-comment">${r.comment || '—'}</div>
+      <div class="tx-amount">${fmt(r.amount)}</div>
+    </div>`).join('');
+}
+
+function renderStats() {
+  const todayStr = today(), monthStr = todayStr.slice(0,7);
+  const todayTx = allData.filter(r => String(r.date).slice(0,10) === todayStr);
+  const monthTx = allData.filter(r => String(r.date).slice(0,7) === monthStr);
+  const sum = arr => arr.reduce((s,r) => s + Number(r.amount), 0);
+  document.getElementById('s-today').textContent = fmt(sum(todayTx));
+  document.getElementById('s-today-c').textContent = todayTx.length + ' трат';
+  document.getElementById('s-month').textContent = fmt(sum(monthTx));
+  document.getElementById('s-month-c').textContent = monthTx.length + ' трат';
+  document.getElementById('s-total').textContent = fmt(sum(allData));
+  document.getElementById('s-total-c').textContent = allData.length + ' трат';
+}
+
+function renderChart() {
+  const barsEl = document.getElementById('chart-bars');
+  const lblsEl = document.getElementById('chart-labels');
+  barsEl.innerHTML = ''; lblsEl.innerHTML = '';
+  const days = Array.from({length:7}, (_,i) => {
+    const d = new Date(); d.setDate(d.getDate() - (6-i));
+    return d.toISOString().split('T')[0];
+  });
+  const totals = days.map(d => ({
+    label: d.slice(5),
+    total: allData.filter(r => String(r.date).slice(0,10) === d).reduce((s,r) => s+Number(r.amount),0)
+  }));
+  const max = Math.max(...totals.map(d=>d.total), 1);
+  totals.forEach(({label, total}) => {
+    const h = Math.max(3, Math.round((total/max)*88));
+    barsEl.innerHTML += `<div class="bar-col"><div class="bar" style="height:${h}px" title="${fmt(total)}"></div></div>`;
+    lblsEl.innerHTML += `<div class="bar-lbl">${label}</div>`;
+  });
+}
+
+function renderCats() {
+  const el = document.getElementById('cat-list');
+  const monthStr = today().slice(0,7);
+  const monthTx = allData.filter(r => String(r.date).slice(0,7) === monthStr);
+  if (!monthTx.length) { el.innerHTML = '<div class="empty">Нет данных за этот месяц</div>'; return; }
+  const cats = {};
+  monthTx.forEach(r => { cats[r.category] = (cats[r.category]||0) + Number(r.amount); });
+  const sorted = Object.entries(cats).sort((a,b) => b[1]-a[1]);
+  const max = sorted[0][1];
+  el.innerHTML = sorted.map(([cat, amt]) => `
+    <div class="cat-row">
+      <div class="cat-name" style="color:${CAT_COLORS[cat]||'#888'}">${cat}</div>
+      <div class="cat-track"><div class="cat-fill" style="width:${Math.round(amt/max*100)}%;background:${CAT_COLORS[cat]||'#c8f135'}"></div></div>
+      <div class="cat-amt">${fmt(amt)}</div>
+    </div>`).join('');
+}
+
+function renderAll() {
+  const el = document.getElementById('all-list');
+  if (!allData.length) { el.innerHTML = '<div class="empty">Нет транзакций</div>'; return; }
+  el.innerHTML = [...allData].reverse().map((r,i) => `
+    <div class="tx-row" style="background:${i%2===0?'#1e1e1e':'transparent'};padding:8px 6px;border-radius:2px;border-bottom:none;margin-bottom:2px">
+      <div class="tx-date">${String(r.date).slice(0,10)}</div>
+      <div class="tx-cat" style="color:${CAT_COLORS[r.category]||'#888'}">${r.category}</div>
+      <div class="tx-comment">${r.comment || '—'}</div>
+      <div class="tx-amount">${fmt(r.amount)}</div>
+    </div>`).join('');
+}
+
+async function addExpense() {
+  const amount = document.getElementById('amount').value;
+  const category = document.getElementById('category').value;
+  const date = document.getElementById('date').value;
+  const comment = document.getElementById('comment').value;
+  const status = document.getElementById('status');
+  const btn = document.getElementById('submitBtn');
+
+  if (!amount || Number(amount) <= 0) { status.className='status err'; status.textContent='Введи сумму'; return; }
+  if (!date) { status.className='status err'; status.textContent='Выбери дату'; return; }
+
+  btn.disabled = true; btn.textContent = 'ОТПРАВЛЯЕМ...'; status.className = 'status';
+
+  try {
+    const res = await fetch(API, {
+      method: 'POST',
+      body: JSON.stringify({ amount: Number(amount), category, date, comment })
+    });
+    const json = await res.json();
+    if (json.success) {
+      status.className = 'status ok'; status.textContent = '✓ Добавлено';
+      document.getElementById('amount').value = '';
+      document.getElementById('comment').value = '';
+      document.getElementById('date').value = today();
+      loadData();
+    } else throw new Error(json.error);
+  } catch(e) {
+    status.className = 'status err'; status.textContent = 'Ошибка: ' + e.message;
+  }
+  btn.disabled = false; btn.textContent = 'ДОБАВИТЬ';
+}
+
+loadData();
+</script>
+</body>
+</html>
