@@ -18,7 +18,6 @@
   }
   body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
 
-  /* HEADER */
   header {
     position: sticky; top: 0; z-index: 10;
     background: var(--bg); border-bottom: 1px solid var(--border);
@@ -53,29 +52,24 @@
   input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   textarea { resize: none; height: 58px; }
 
-  /* hide number input spinners */
   input[type=number]::-webkit-inner-spin-button,
   input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   input[type=number] { -moz-appearance: textfield; }
 
-  /* AMOUNT + CURRENCY ROW */
   .amount-row { display: flex; gap: 8px; align-items: stretch; }
-  .amount-row input {
-    flex: 1; font-size: 22px; font-weight: 700;
-  }
+  .amount-row input { flex: 1; font-size: 22px; font-weight: 700; }
   .currency-btn {
     flex-shrink: 0; min-width: 64px;
     background: var(--surface2); border: 1px solid var(--border);
     border-radius: 3px; color: var(--accent); font-family: var(--font);
     font-size: 13px; font-weight: 700; letter-spacing: 1px;
     cursor: pointer; padding: 0 12px;
-    transition: border-color 0.15s, color 0.15s;
+    transition: border-color 0.15s;
     display: flex; align-items: center; justify-content: center; gap: 4px;
   }
   .currency-btn:hover { border-color: var(--accent); }
   .currency-btn .arrow { font-size: 9px; color: var(--muted); }
 
-  /* CURRENCY PICKER OVERLAY */
   .cur-overlay {
     display: none; position: fixed; inset: 0; z-index: 100;
     background: rgba(0,0,0,0.7); align-items: flex-end; justify-content: center;
@@ -86,24 +80,19 @@
     border-radius: 8px 8px 0 0; width: 100%; max-width: 600px;
     padding: 20px; max-height: 80vh; display: flex; flex-direction: column;
   }
-  .cur-sheet-title {
-    font-size: 9px; text-transform: uppercase; letter-spacing: 3px;
-    color: var(--muted); margin-bottom: 16px;
-  }
+  .cur-sheet-title { font-size: 9px; text-transform: uppercase; letter-spacing: 3px; color: var(--muted); margin-bottom: 16px; }
   .cur-quick { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
   .cur-quick-btn {
     background: var(--surface2); border: 1px solid var(--border);
     color: var(--text); font-family: var(--font); font-size: 12px; font-weight: 700;
-    padding: 8px 16px; border-radius: 3px; cursor: pointer; transition: all 0.15s;
-    letter-spacing: 1px;
+    padding: 8px 16px; border-radius: 3px; cursor: pointer; transition: all 0.15s; letter-spacing: 1px;
   }
   .cur-quick-btn:hover, .cur-quick-btn.selected { background: var(--accent); color: #0f0f0f; border-color: var(--accent); }
   .cur-divider { font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-bottom: 10px; }
   .cur-scroll { overflow-y: auto; flex: 1; }
   .cur-item {
     display: flex; align-items: center; gap: 12px;
-    padding: 10px 8px; border-bottom: 1px solid #1e1e1e; cursor: pointer;
-    transition: background 0.1s;
+    padding: 10px 8px; border-bottom: 1px solid #1e1e1e; cursor: pointer; transition: background 0.1s;
   }
   .cur-item:hover { background: var(--surface2); }
   .cur-item.selected { color: var(--accent); }
@@ -154,6 +143,7 @@
   .tx-comment { font-size: 11px; color: #888; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tx-amount { font-size: 12px; font-weight: 600; color: var(--accent2); flex-shrink: 0; }
   .tx-cur { font-size: 9px; color: var(--muted); flex-shrink: 0; margin-left: 2px; }
+  .tx-usd { font-size: 9px; color: #444; flex-shrink: 0; margin-left: 4px; }
 
   .empty { font-size: 11px; color: #333; text-align: center; padding: 20px; }
   .refresh-btn {
@@ -169,6 +159,12 @@
 
   .tab-content { display: none; }
   .tab-content.active { display: block; }
+
+  /* rate badge on form */
+  .rate-info { font-size: 10px; color: var(--muted); margin-top: 6px; min-height: 16px; }
+  .rate-info.loading { color: #444; }
+  .rate-info.ok { color: #4a7a20; }
+  .rate-info.err { color: var(--danger); }
 </style>
 </head>
 <body>
@@ -189,12 +185,13 @@
       <div class="field">
         <label>Amount</label>
         <div class="amount-row">
-          <input type="number" id="amount" placeholder="0" min="0" inputmode="decimal">
+          <input type="number" id="amount" placeholder="0" min="0" inputmode="decimal" oninput="updateRatePreview()">
           <button class="currency-btn" id="currencyBtn" onclick="openPicker()">
             <span id="currencyLabel">AMD</span>
             <span class="arrow">▾</span>
           </button>
         </div>
+        <div class="rate-info" id="rateInfo"></div>
       </div>
       <div class="field">
         <label>Category</label>
@@ -222,7 +219,7 @@
     <div class="card">
       <div class="card-header">
         <div class="card-title">Last 5</div>
-        <button class="refresh-btn" onclick="loadData()">↻</button>
+        <button class="refresh-btn" onclick="loadData()">sync</button>
       </div>
       <div id="recent-list"><div class="empty">Loading...</div></div>
     </div>
@@ -253,7 +250,7 @@
     <div class="card">
       <div class="card-header">
         <div class="card-title">Last 7 days</div>
-        <button class="refresh-btn" onclick="loadData()">↻</button>
+        <button class="refresh-btn" onclick="loadData()">sync</button>
       </div>
       <div class="chart-bars" id="chart-bars"></div>
       <div class="bar-labels" id="chart-labels"></div>
@@ -284,13 +281,13 @@
 
 <script>
 const API = 'https://script.google.com/macros/s/AKfycbyu7T5p5cvEpdsDf7yydAMg6m6o718w2fYCT7X-2gYnPFjxuy00ljxFX0q9iQT1CldNbA/exec';
+const FX_API = 'https://api.frankfurter.app/latest?from=USD';
 
 const CAT_COLORS = {
   'Food': '#c8f135', 'Transport': '#35c8f1', 'Housing': '#f1c835',
   'Entertainment': '#f135c8', 'Health': '#35f1c8', 'Other': '#8888aa'
 };
 
-// Full currency list
 const ALL_CURRENCIES = [
   {code:'AED',name:'UAE Dirham'},{code:'AFN',name:'Afghan Afghani'},{code:'ALL',name:'Albanian Lek'},
   {code:'AMD',name:'Armenian Dram'},{code:'ANG',name:'Netherlands Antillean Guilder'},
@@ -374,19 +371,52 @@ const ALL_CURRENCIES = [
 const QUICK_CURRENCIES = ['AMD', 'USD', 'RUB', 'GEL'];
 const DEFAULT_CURRENCY = 'AMD';
 
-// --- Currency memory (last 3 picks) ---
+// --- FX rates cache ---
+let fxRates = null; // rates relative to USD: { AMD: 390, GEL: 2.7, ... }
+let fxLoading = false;
+
+async function loadRates() {
+  if (fxRates) return fxRates;
+  if (fxLoading) return null;
+  fxLoading = true;
+  try {
+    const res = await fetch(FX_API);
+    const json = await res.json();
+    // json.rates = { AMD: 390, EUR: 0.92, ... } (relative to 1 USD)
+    fxRates = json.rates;
+    fxRates['USD'] = 1;
+    fxLoading = false;
+    return fxRates;
+  } catch(e) {
+    fxLoading = false;
+    return null;
+  }
+}
+
+function toUSD(amount, currency, rates) {
+  if (currency === 'USD') return amount;
+  if (!rates || !rates[currency]) return null;
+  return amount / rates[currency];
+}
+
+function fmtUSD(n) {
+  return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtRaw(n) {
+  return Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+
+// --- Currency memory ---
 function getCurrencyHistory() {
   try { return JSON.parse(localStorage.getItem('cur_history') || '[]'); } catch { return []; }
 }
 function saveCurrencyHistory(code) {
   let h = getCurrencyHistory().filter(c => c !== code);
   h.unshift(code);
-  h = h.slice(0, 3);
-  localStorage.setItem('cur_history', JSON.stringify(h));
+  localStorage.setItem('cur_history', JSON.stringify(h.slice(0, 3)));
 }
 function getDefaultCurrency() {
   const h = getCurrencyHistory();
-  // If all 3 last picks are the same — use it, otherwise fallback to AMD
   if (h.length === 3 && h.every(c => c === h[0])) return h[0];
   if (h.length > 0) return h[0];
   return DEFAULT_CURRENCY;
@@ -394,6 +424,28 @@ function getDefaultCurrency() {
 
 let selectedCurrency = getDefaultCurrency();
 document.getElementById('currencyLabel').textContent = selectedCurrency;
+
+// Preload rates on page open
+loadRates().then(updateRatePreview);
+
+// Show rate preview below amount field
+async function updateRatePreview() {
+  const el = document.getElementById('rateInfo');
+  const amount = parseFloat(document.getElementById('amount').value);
+  if (selectedCurrency === 'USD') { el.textContent = ''; return; }
+  const rates = await loadRates();
+  if (!rates) { el.className = 'rate-info err'; el.textContent = 'Could not load exchange rate'; return; }
+  if (!rates[selectedCurrency]) { el.className = 'rate-info err'; el.textContent = 'Rate unavailable for ' + selectedCurrency; return; }
+  const rate = rates[selectedCurrency];
+  if (amount && amount > 0) {
+    const usd = amount / rate;
+    el.className = 'rate-info ok';
+    el.textContent = `≈ ${fmtUSD(usd)}  (1 USD = ${fmtRaw(rate)} ${selectedCurrency})`;
+  } else {
+    el.className = 'rate-info';
+    el.textContent = `1 USD = ${fmtRaw(rate)} ${selectedCurrency}`;
+  }
+}
 
 // --- Picker ---
 function openPicker() {
@@ -406,44 +458,32 @@ function closePicker() {
 function handleOverlayClick(e) {
   if (e.target === document.getElementById('curOverlay')) closePicker();
 }
-
 function selectCurrency(code) {
   selectedCurrency = code;
   document.getElementById('currencyLabel').textContent = code;
   saveCurrencyHistory(code);
   closePicker();
+  updateRatePreview();
 }
-
 function renderPicker() {
   const quickEl = document.getElementById('curQuick');
   const scrollEl = document.getElementById('curScroll');
-
-  // Quick buttons: history first, then defaults
   const history = getCurrencyHistory();
   const quickSet = [...new Set([...history, ...QUICK_CURRENCIES])].slice(0, 5);
-
   quickEl.innerHTML = quickSet.map(code => `
     <button class="cur-quick-btn ${code === selectedCurrency ? 'selected' : ''}"
-      onclick="selectCurrency('${code}')">${code}</button>
-  `).join('');
-
+      onclick="selectCurrency('${code}')">${code}</button>`).join('');
   scrollEl.innerHTML = ALL_CURRENCIES.map(({code, name}) => `
     <div class="cur-item ${code === selectedCurrency ? 'selected' : ''}" onclick="selectCurrency('${code}')">
       <div class="cur-code">${code}</div>
       <div class="cur-name">${name}</div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
 // --- App ---
 let allData = [];
 
-function fmt(n, cur) {
-  const num = Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
-  return cur ? `${num} ${cur}` : num;
-}
 function today() { return new Date().toISOString().split('T')[0]; }
-
 document.getElementById('date').value = today();
 
 function switchTab(name) {
@@ -470,6 +510,10 @@ async function loadData() {
   document.getElementById('loader').classList.remove('active');
 }
 
+function sumUSD(arr) {
+  return arr.reduce((s, r) => s + Number(r.amount_usd || 0), 0);
+}
+
 function renderRecent() {
   const el = document.getElementById('recent-list');
   const recent = [...allData].reverse().slice(0, 5);
@@ -479,8 +523,9 @@ function renderRecent() {
       <div class="tx-date">${String(r.date).slice(0,10)}</div>
       <div class="tx-cat" style="color:${CAT_COLORS[r.category]||'#888'}">${r.category}</div>
       <div class="tx-comment">${r.comment || '—'}</div>
-      <div class="tx-amount">${fmt(r.amount)}</div>
+      <div class="tx-amount">${fmtRaw(r.amount)}</div>
       <div class="tx-cur">${r.currency || ''}</div>
+      ${r.amount_usd ? `<div class="tx-usd">${fmtUSD(r.amount_usd)}</div>` : ''}
     </div>`).join('');
 }
 
@@ -488,13 +533,12 @@ function renderStats() {
   const todayStr = today(), monthStr = todayStr.slice(0,7);
   const todayTx = allData.filter(r => String(r.date).slice(0,10) === todayStr);
   const monthTx = allData.filter(r => String(r.date).slice(0,7) === monthStr);
-  // Stats are raw sums — multi-currency conversion comes in next iteration
-  const sum = arr => arr.reduce((s,r) => s + Number(r.amount), 0);
-  document.getElementById('s-today').textContent = fmt(sum(todayTx));
+
+  document.getElementById('s-today').textContent = fmtUSD(sumUSD(todayTx));
   document.getElementById('s-today-c').textContent = todayTx.length + ' transactions';
-  document.getElementById('s-month').textContent = fmt(sum(monthTx));
+  document.getElementById('s-month').textContent = fmtUSD(sumUSD(monthTx));
   document.getElementById('s-month-c').textContent = monthTx.length + ' transactions';
-  document.getElementById('s-total').textContent = fmt(sum(allData));
+  document.getElementById('s-total').textContent = fmtUSD(sumUSD(allData));
   document.getElementById('s-total-c').textContent = allData.length + ' transactions';
 }
 
@@ -508,12 +552,12 @@ function renderChart() {
   });
   const totals = days.map(d => ({
     label: d.slice(5),
-    total: allData.filter(r => String(r.date).slice(0,10) === d).reduce((s,r) => s+Number(r.amount),0)
+    total: allData.filter(r => String(r.date).slice(0,10) === d).reduce((s,r) => s + Number(r.amount_usd || 0), 0)
   }));
   const max = Math.max(...totals.map(d=>d.total), 1);
   totals.forEach(({label, total}) => {
     const h = Math.max(3, Math.round((total/max)*88));
-    barsEl.innerHTML += `<div class="bar-col"><div class="bar" style="height:${h}px" title="${fmt(total)}"></div></div>`;
+    barsEl.innerHTML += `<div class="bar-col"><div class="bar" style="height:${h}px" title="${fmtUSD(total)}"></div></div>`;
     lblsEl.innerHTML += `<div class="bar-lbl">${label}</div>`;
   });
 }
@@ -524,14 +568,14 @@ function renderCats() {
   const monthTx = allData.filter(r => String(r.date).slice(0,7) === monthStr);
   if (!monthTx.length) { el.innerHTML = '<div class="empty">No data for this month</div>'; return; }
   const cats = {};
-  monthTx.forEach(r => { cats[r.category] = (cats[r.category]||0) + Number(r.amount); });
+  monthTx.forEach(r => { cats[r.category] = (cats[r.category]||0) + Number(r.amount_usd || 0); });
   const sorted = Object.entries(cats).sort((a,b) => b[1]-a[1]);
   const max = sorted[0][1];
   el.innerHTML = sorted.map(([cat, amt]) => `
     <div class="cat-row">
       <div class="cat-name" style="color:${CAT_COLORS[cat]||'#888'}">${cat}</div>
       <div class="cat-track"><div class="cat-fill" style="width:${Math.round(amt/max*100)}%;background:${CAT_COLORS[cat]||'#c8f135'}"></div></div>
-      <div class="cat-amt">${fmt(amt)}</div>
+      <div class="cat-amt">${fmtUSD(amt)}</div>
     </div>`).join('');
 }
 
@@ -543,13 +587,14 @@ function renderAll() {
       <div class="tx-date">${String(r.date).slice(0,10)}</div>
       <div class="tx-cat" style="color:${CAT_COLORS[r.category]||'#888'}">${r.category}</div>
       <div class="tx-comment">${r.comment || '—'}</div>
-      <div class="tx-amount">${fmt(r.amount)}</div>
+      <div class="tx-amount">${fmtRaw(r.amount)}</div>
       <div class="tx-cur">${r.currency || ''}</div>
+      ${r.amount_usd ? `<div class="tx-usd">${fmtUSD(r.amount_usd)}</div>` : ''}
     </div>`).join('');
 }
 
 async function addExpense() {
-  const amount = document.getElementById('amount').value;
+  const amount = parseFloat(document.getElementById('amount').value);
   const category = document.getElementById('category').value;
   const date = document.getElementById('date').value;
   const comment = document.getElementById('comment').value;
@@ -557,22 +602,37 @@ async function addExpense() {
   const status = document.getElementById('status');
   const btn = document.getElementById('submitBtn');
 
-  if (!amount || Number(amount) <= 0) { status.className='status err'; status.textContent='Enter amount'; return; }
+  if (!amount || amount <= 0) { status.className='status err'; status.textContent='Enter amount'; return; }
   if (!date) { status.className='status err'; status.textContent='Select date'; return; }
 
   btn.disabled = true; btn.textContent = 'SAVING...'; status.className = 'status';
 
+  // Get exchange rate
+  const rates = await loadRates();
+  let amount_usd = null;
+  if (rates) {
+    amount_usd = toUSD(amount, currency, rates);
+  }
+  if (amount_usd === null) {
+    status.className='status err';
+    status.textContent='Could not get exchange rate. Check connection and try again.';
+    btn.disabled = false; btn.textContent = 'ADD';
+    return;
+  }
+
   try {
     const res = await fetch(API, {
       method: 'POST',
-      body: JSON.stringify({ amount: Number(amount), category, date, comment, currency })
+      body: JSON.stringify({ amount, category, date, comment, currency, amount_usd: parseFloat(amount_usd.toFixed(4)) })
     });
     const json = await res.json();
     if (json.success) {
-      status.className = 'status ok'; status.textContent = '✓ Added';
+      status.className = 'status ok';
+      status.textContent = `✓ Added  (${fmtUSD(amount_usd)})`;
       document.getElementById('amount').value = '';
       document.getElementById('comment').value = '';
       document.getElementById('date').value = today();
+      document.getElementById('rateInfo').textContent = '';
       loadData();
     } else throw new Error(json.error);
   } catch(e) {
