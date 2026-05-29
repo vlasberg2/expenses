@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Расходы</title>
+<title>Expenses</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Unbounded:wght@400;700&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -35,16 +35,13 @@
   }
   .tab-btn.active { background: var(--accent); color: #0f0f0f; border-color: var(--accent); }
 
-  /* BODY */
   main { padding: 20px; max-width: 600px; margin: 0 auto; }
 
-  /* CARD */
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 18px; margin-bottom: 14px; }
   .card-title { font-size: 9px; text-transform: uppercase; letter-spacing: 3px; color: var(--muted); margin-bottom: 16px; }
   .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
   .card-header .card-title { margin-bottom: 0; }
 
-  /* FORM */
   .field { margin-bottom: 13px; }
   label { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-bottom: 6px; }
   input, select, textarea {
@@ -55,9 +52,68 @@
   }
   input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   textarea { resize: none; height: 58px; }
-  .amount-wrap { position: relative; }
-  .amount-wrap input { font-size: 22px; font-weight: 700; padding-right: 36px; }
-  .currency { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 13px; pointer-events: none; }
+
+  /* hide number input spinners */
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+
+  /* AMOUNT + CURRENCY ROW */
+  .amount-row { display: flex; gap: 8px; align-items: stretch; }
+  .amount-row input {
+    flex: 1; font-size: 22px; font-weight: 700;
+  }
+  .currency-btn {
+    flex-shrink: 0; min-width: 64px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 3px; color: var(--accent); font-family: var(--font);
+    font-size: 13px; font-weight: 700; letter-spacing: 1px;
+    cursor: pointer; padding: 0 12px;
+    transition: border-color 0.15s, color 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+  }
+  .currency-btn:hover { border-color: var(--accent); }
+  .currency-btn .arrow { font-size: 9px; color: var(--muted); }
+
+  /* CURRENCY PICKER OVERLAY */
+  .cur-overlay {
+    display: none; position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,0.7); align-items: flex-end; justify-content: center;
+  }
+  .cur-overlay.open { display: flex; }
+  .cur-sheet {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px 8px 0 0; width: 100%; max-width: 600px;
+    padding: 20px; max-height: 80vh; display: flex; flex-direction: column;
+  }
+  .cur-sheet-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 3px;
+    color: var(--muted); margin-bottom: 16px;
+  }
+  .cur-quick { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .cur-quick-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); font-family: var(--font); font-size: 12px; font-weight: 700;
+    padding: 8px 16px; border-radius: 3px; cursor: pointer; transition: all 0.15s;
+    letter-spacing: 1px;
+  }
+  .cur-quick-btn:hover, .cur-quick-btn.selected { background: var(--accent); color: #0f0f0f; border-color: var(--accent); }
+  .cur-divider { font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-bottom: 10px; }
+  .cur-scroll { overflow-y: auto; flex: 1; }
+  .cur-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 8px; border-bottom: 1px solid #1e1e1e; cursor: pointer;
+    transition: background 0.1s;
+  }
+  .cur-item:hover { background: var(--surface2); }
+  .cur-item.selected { color: var(--accent); }
+  .cur-code { font-weight: 700; font-size: 13px; width: 44px; flex-shrink: 0; }
+  .cur-name { font-size: 11px; color: var(--muted); }
+  .cur-close {
+    margin-top: 14px; width: 100%; background: none; border: 1px solid var(--border);
+    color: var(--muted); font-family: var(--font); font-size: 10px; letter-spacing: 1px;
+    padding: 10px; border-radius: 3px; cursor: pointer; text-transform: uppercase;
+  }
 
   .btn-add {
     width: 100%; background: var(--accent); color: #0f0f0f;
@@ -73,34 +129,31 @@
   .status.ok { display: block; background: #1a2e00; color: var(--accent); border: 1px solid var(--accent); }
   .status.err { display: block; background: #2e0000; color: var(--danger); border: 1px solid var(--danger); }
 
-  /* STATS */
   .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 14px; }
   .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 14px; }
   .stat-label { font-size: 8px; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-bottom: 8px; }
   .stat-value { font-family: var(--display); font-size: 15px; font-weight: 700; color: var(--accent); line-height: 1.2; }
   .stat-sub { font-size: 9px; color: #333; margin-top: 4px; }
 
-  /* CHART */
   .chart-bars { display: flex; align-items: flex-end; gap: 5px; height: 100px; padding-top: 8px; }
   .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
   .bar { width: 100%; background: var(--accent); border-radius: 2px 2px 0 0; min-height: 3px; }
   .bar-labels { display: flex; gap: 5px; margin-top: 6px; }
   .bar-lbl { flex: 1; text-align: center; font-size: 8px; color: var(--muted); }
 
-  /* CAT LIST */
   .cat-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
   .cat-name { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; width: 85px; flex-shrink: 0; }
   .cat-track { flex: 1; height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
   .cat-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
   .cat-amt { font-size: 11px; font-weight: 600; width: 75px; text-align: right; flex-shrink: 0; }
 
-  /* TX LIST */
   .tx-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #1e1e1e; }
   .tx-row:last-child { border-bottom: none; }
   .tx-date { font-size: 9px; color: var(--muted); width: 65px; flex-shrink: 0; }
   .tx-cat { font-size: 8px; text-transform: uppercase; letter-spacing: 0.5px; width: 75px; flex-shrink: 0; }
   .tx-comment { font-size: 11px; color: #888; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tx-amount { font-size: 12px; font-weight: 600; color: var(--accent2); flex-shrink: 0; }
+  .tx-cur { font-size: 9px; color: var(--muted); flex-shrink: 0; margin-left: 2px; }
 
   .empty { font-size: 11px; color: #333; text-align: center; padding: 20px; }
   .refresh-btn {
@@ -114,7 +167,6 @@
   .loader::after { content: ''; display: block; height: 100%; background: var(--accent); width: 30%; animation: slide 1s infinite linear; }
   @keyframes slide { from { transform: translateX(-200%); } to { transform: translateX(500%); } }
 
-  /* hidden tab */
   .tab-content { display: none; }
   .tab-content.active { display: block; }
 </style>
@@ -122,10 +174,10 @@
 <body>
 
 <header>
-  <div class="logo">РАСХОДЫ</div>
+  <div class="logo">EXPENSES</div>
   <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('add')">Добавить</button>
-    <button class="tab-btn" onclick="switchTab('dash')">Дашборд</button>
+    <button class="tab-btn active" onclick="switchTab('add')">Add</button>
+    <button class="tab-btn" onclick="switchTab('dash')">Dashboard</button>
   </div>
 </header>
 
@@ -133,43 +185,46 @@
   <!-- ADD TAB -->
   <div class="tab-content active" id="tab-add">
     <div class="card">
-      <div class="card-title">Новая трата</div>
+      <div class="card-title">New expense</div>
       <div class="field">
-        <label>Сумма</label>
-        <div class="amount-wrap">
+        <label>Amount</label>
+        <div class="amount-row">
           <input type="number" id="amount" placeholder="0" min="0" inputmode="decimal">
-          <span class="currency">₽</span>
+          <button class="currency-btn" id="currencyBtn" onclick="openPicker()">
+            <span id="currencyLabel">AMD</span>
+            <span class="arrow">▾</span>
+          </button>
         </div>
       </div>
       <div class="field">
-        <label>Категория</label>
+        <label>Category</label>
         <select id="category">
-          <option>Еда</option>
-          <option>Транспорт</option>
-          <option>Жильё</option>
-          <option>Развлечения</option>
-          <option>Здоровье</option>
-          <option>Прочее</option>
+          <option>Food</option>
+          <option>Transport</option>
+          <option>Housing</option>
+          <option>Entertainment</option>
+          <option>Health</option>
+          <option>Other</option>
         </select>
       </div>
       <div class="field">
-        <label>Дата</label>
+        <label>Date</label>
         <input type="date" id="date">
       </div>
       <div class="field">
-        <label>Комментарий</label>
-        <textarea id="comment" placeholder="Необязательно..."></textarea>
+        <label>Comment</label>
+        <textarea id="comment" placeholder="Optional..."></textarea>
       </div>
-      <button class="btn-add" id="submitBtn" onclick="addExpense()">ДОБАВИТЬ</button>
+      <button class="btn-add" id="submitBtn" onclick="addExpense()">ADD</button>
       <div class="status" id="status"></div>
     </div>
 
     <div class="card">
       <div class="card-header">
-        <div class="card-title">Последние 5</div>
+        <div class="card-title">Last 5</div>
         <button class="refresh-btn" onclick="loadData()">↻</button>
       </div>
-      <div id="recent-list"><div class="empty">Загрузка...</div></div>
+      <div id="recent-list"><div class="empty">Loading...</div></div>
     </div>
   </div>
 
@@ -179,17 +234,17 @@
 
     <div class="stats">
       <div class="stat">
-        <div class="stat-label">Месяц</div>
+        <div class="stat-label">This month</div>
         <div class="stat-value" id="s-month">—</div>
         <div class="stat-sub" id="s-month-c">—</div>
       </div>
       <div class="stat">
-        <div class="stat-label">Сегодня</div>
+        <div class="stat-label">Today</div>
         <div class="stat-value" id="s-today">—</div>
         <div class="stat-sub" id="s-today-c">—</div>
       </div>
       <div class="stat">
-        <div class="stat-label">Всего</div>
+        <div class="stat-label">All time</div>
         <div class="stat-value" id="s-total">—</div>
         <div class="stat-sub" id="s-total-c">—</div>
       </div>
@@ -197,7 +252,7 @@
 
     <div class="card">
       <div class="card-header">
-        <div class="card-title">7 дней</div>
+        <div class="card-title">Last 7 days</div>
         <button class="refresh-btn" onclick="loadData()">↻</button>
       </div>
       <div class="chart-bars" id="chart-bars"></div>
@@ -205,29 +260,187 @@
     </div>
 
     <div class="card">
-      <div class="card-title">По категориям (месяц)</div>
-      <div id="cat-list"><div class="empty">Нет данных</div></div>
+      <div class="card-title">By category (this month)</div>
+      <div id="cat-list"><div class="empty">No data</div></div>
     </div>
 
     <div class="card">
-      <div class="card-title">Все транзакции</div>
-      <div id="all-list"><div class="empty">Нет данных</div></div>
+      <div class="card-title">All transactions</div>
+      <div id="all-list"><div class="empty">No data</div></div>
     </div>
   </div>
 </main>
+
+<!-- CURRENCY PICKER -->
+<div class="cur-overlay" id="curOverlay" onclick="handleOverlayClick(event)">
+  <div class="cur-sheet">
+    <div class="cur-sheet-title">Select currency</div>
+    <div class="cur-quick" id="curQuick"></div>
+    <div class="cur-divider">All currencies</div>
+    <div class="cur-scroll" id="curScroll"></div>
+    <button class="cur-close" onclick="closePicker()">Cancel</button>
+  </div>
+</div>
 
 <script>
 const API = 'https://script.google.com/macros/s/AKfycbyu7T5p5cvEpdsDf7yydAMg6m6o718w2fYCT7X-2gYnPFjxuy00ljxFX0q9iQT1CldNbA/exec';
 
 const CAT_COLORS = {
-  'Еда': '#c8f135', 'Транспорт': '#35c8f1', 'Жильё': '#f1c835',
-  'Развлечения': '#f135c8', 'Здоровье': '#35f1c8', 'Прочее': '#8888aa'
+  'Food': '#c8f135', 'Transport': '#35c8f1', 'Housing': '#f1c835',
+  'Entertainment': '#f135c8', 'Health': '#35f1c8', 'Other': '#8888aa'
 };
 
+// Full currency list
+const ALL_CURRENCIES = [
+  {code:'AED',name:'UAE Dirham'},{code:'AFN',name:'Afghan Afghani'},{code:'ALL',name:'Albanian Lek'},
+  {code:'AMD',name:'Armenian Dram'},{code:'ANG',name:'Netherlands Antillean Guilder'},
+  {code:'AOA',name:'Angolan Kwanza'},{code:'ARS',name:'Argentine Peso'},
+  {code:'AUD',name:'Australian Dollar'},{code:'AWG',name:'Aruban Florin'},
+  {code:'AZN',name:'Azerbaijani Manat'},{code:'BAM',name:'Bosnia-Herzegovina Mark'},
+  {code:'BBD',name:'Barbadian Dollar'},{code:'BDT',name:'Bangladeshi Taka'},
+  {code:'BGN',name:'Bulgarian Lev'},{code:'BHD',name:'Bahraini Dinar'},
+  {code:'BIF',name:'Burundian Franc'},{code:'BMD',name:'Bermudan Dollar'},
+  {code:'BND',name:'Brunei Dollar'},{code:'BOB',name:'Bolivian Boliviano'},
+  {code:'BRL',name:'Brazilian Real'},{code:'BSD',name:'Bahamian Dollar'},
+  {code:'BTN',name:'Bhutanese Ngultrum'},{code:'BWP',name:'Botswanan Pula'},
+  {code:'BYN',name:'Belarusian Ruble'},{code:'BZD',name:'Belize Dollar'},
+  {code:'CAD',name:'Canadian Dollar'},{code:'CDF',name:'Congolese Franc'},
+  {code:'CHF',name:'Swiss Franc'},{code:'CLP',name:'Chilean Peso'},
+  {code:'CNY',name:'Chinese Yuan'},{code:'COP',name:'Colombian Peso'},
+  {code:'CRC',name:'Costa Rican Colón'},{code:'CUP',name:'Cuban Peso'},
+  {code:'CVE',name:'Cape Verdean Escudo'},{code:'CZK',name:'Czech Koruna'},
+  {code:'DJF',name:'Djiboutian Franc'},{code:'DKK',name:'Danish Krone'},
+  {code:'DOP',name:'Dominican Peso'},{code:'DZD',name:'Algerian Dinar'},
+  {code:'EGP',name:'Egyptian Pound'},{code:'ERN',name:'Eritrean Nakfa'},
+  {code:'ETB',name:'Ethiopian Birr'},{code:'EUR',name:'Euro'},
+  {code:'FJD',name:'Fijian Dollar'},{code:'FKP',name:'Falkland Islands Pound'},
+  {code:'GBP',name:'British Pound'},{code:'GEL',name:'Georgian Lari'},
+  {code:'GHS',name:'Ghanaian Cedi'},{code:'GIP',name:'Gibraltar Pound'},
+  {code:'GMD',name:'Gambian Dalasi'},{code:'GNF',name:'Guinean Franc'},
+  {code:'GTQ',name:'Guatemalan Quetzal'},{code:'GYD',name:'Guyanaese Dollar'},
+  {code:'HKD',name:'Hong Kong Dollar'},{code:'HNL',name:'Honduran Lempira'},
+  {code:'HRK',name:'Croatian Kuna'},{code:'HTG',name:'Haitian Gourde'},
+  {code:'HUF',name:'Hungarian Forint'},{code:'IDR',name:'Indonesian Rupiah'},
+  {code:'ILS',name:'Israeli Shekel'},{code:'INR',name:'Indian Rupee'},
+  {code:'IQD',name:'Iraqi Dinar'},{code:'IRR',name:'Iranian Rial'},
+  {code:'ISK',name:'Icelandic Króna'},{code:'JMD',name:'Jamaican Dollar'},
+  {code:'JOD',name:'Jordanian Dinar'},{code:'JPY',name:'Japanese Yen'},
+  {code:'KES',name:'Kenyan Shilling'},{code:'KGS',name:'Kyrgystani Som'},
+  {code:'KHR',name:'Cambodian Riel'},{code:'KMF',name:'Comorian Franc'},
+  {code:'KPW',name:'North Korean Won'},{code:'KRW',name:'South Korean Won'},
+  {code:'KWD',name:'Kuwaiti Dinar'},{code:'KYD',name:'Cayman Islands Dollar'},
+  {code:'KZT',name:'Kazakhstani Tenge'},{code:'LAK',name:'Laotian Kip'},
+  {code:'LBP',name:'Lebanese Pound'},{code:'LKR',name:'Sri Lankan Rupee'},
+  {code:'LRD',name:'Liberian Dollar'},{code:'LSL',name:'Lesotho Loti'},
+  {code:'LYD',name:'Libyan Dinar'},{code:'MAD',name:'Moroccan Dirham'},
+  {code:'MDL',name:'Moldovan Leu'},{code:'MGA',name:'Malagasy Ariary'},
+  {code:'MKD',name:'Macedonian Denar'},{code:'MMK',name:'Myanmar Kyat'},
+  {code:'MNT',name:'Mongolian Tugrik'},{code:'MOP',name:'Macanese Pataca'},
+  {code:'MRU',name:'Mauritanian Ouguiya'},{code:'MUR',name:'Mauritian Rupee'},
+  {code:'MVR',name:'Maldivian Rufiyaa'},{code:'MWK',name:'Malawian Kwacha'},
+  {code:'MXN',name:'Mexican Peso'},{code:'MYR',name:'Malaysian Ringgit'},
+  {code:'MZN',name:'Mozambican Metical'},{code:'NAD',name:'Namibian Dollar'},
+  {code:'NGN',name:'Nigerian Naira'},{code:'NIO',name:'Nicaraguan Córdoba'},
+  {code:'NOK',name:'Norwegian Krone'},{code:'NPR',name:'Nepalese Rupee'},
+  {code:'NZD',name:'New Zealand Dollar'},{code:'OMR',name:'Omani Rial'},
+  {code:'PAB',name:'Panamanian Balboa'},{code:'PEN',name:'Peruvian Sol'},
+  {code:'PGK',name:'Papua New Guinean Kina'},{code:'PHP',name:'Philippine Peso'},
+  {code:'PKR',name:'Pakistani Rupee'},{code:'PLN',name:'Polish Zloty'},
+  {code:'PYG',name:'Paraguayan Guarani'},{code:'QAR',name:'Qatari Rial'},
+  {code:'RON',name:'Romanian Leu'},{code:'RSD',name:'Serbian Dinar'},
+  {code:'RUB',name:'Russian Ruble'},{code:'RWF',name:'Rwandan Franc'},
+  {code:'SAR',name:'Saudi Riyal'},{code:'SBD',name:'Solomon Islands Dollar'},
+  {code:'SCR',name:'Seychellois Rupee'},{code:'SDG',name:'Sudanese Pound'},
+  {code:'SEK',name:'Swedish Krona'},{code:'SGD',name:'Singapore Dollar'},
+  {code:'SHP',name:'Saint Helena Pound'},{code:'SLL',name:'Sierra Leonean Leone'},
+  {code:'SOS',name:'Somali Shilling'},{code:'SRD',name:'Surinamese Dollar'},
+  {code:'STN',name:'São Tomé & Príncipe Dobra'},{code:'SVC',name:'Salvadoran Colón'},
+  {code:'SYP',name:'Syrian Pound'},{code:'SZL',name:'Swazi Lilangeni'},
+  {code:'THB',name:'Thai Baht'},{code:'TJS',name:'Tajikistani Somoni'},
+  {code:'TMT',name:'Turkmenistani Manat'},{code:'TND',name:'Tunisian Dinar'},
+  {code:'TOP',name:'Tongan Paʻanga'},{code:'TRY',name:'Turkish Lira'},
+  {code:'TTD',name:'Trinidad & Tobago Dollar'},{code:'TWD',name:'New Taiwan Dollar'},
+  {code:'TZS',name:'Tanzanian Shilling'},{code:'UAH',name:'Ukrainian Hryvnia'},
+  {code:'UGX',name:'Ugandan Shilling'},{code:'USD',name:'US Dollar'},
+  {code:'UYU',name:'Uruguayan Peso'},{code:'UZS',name:'Uzbekistani Som'},
+  {code:'VES',name:'Venezuelan Bolívar'},{code:'VND',name:'Vietnamese Dong'},
+  {code:'VUV',name:'Vanuatu Vatu'},{code:'WST',name:'Samoan Tala'},
+  {code:'XAF',name:'Central African CFA Franc'},{code:'XCD',name:'East Caribbean Dollar'},
+  {code:'XOF',name:'West African CFA Franc'},{code:'XPF',name:'CFP Franc'},
+  {code:'YER',name:'Yemeni Rial'},{code:'ZAR',name:'South African Rand'},
+  {code:'ZMW',name:'Zambian Kwacha'},{code:'ZWL',name:'Zimbabwean Dollar'}
+];
+
+const QUICK_CURRENCIES = ['AMD', 'USD', 'RUB', 'GEL'];
+const DEFAULT_CURRENCY = 'AMD';
+
+// --- Currency memory (last 3 picks) ---
+function getCurrencyHistory() {
+  try { return JSON.parse(localStorage.getItem('cur_history') || '[]'); } catch { return []; }
+}
+function saveCurrencyHistory(code) {
+  let h = getCurrencyHistory().filter(c => c !== code);
+  h.unshift(code);
+  h = h.slice(0, 3);
+  localStorage.setItem('cur_history', JSON.stringify(h));
+}
+function getDefaultCurrency() {
+  const h = getCurrencyHistory();
+  // If all 3 last picks are the same — use it, otherwise fallback to AMD
+  if (h.length === 3 && h.every(c => c === h[0])) return h[0];
+  if (h.length > 0) return h[0];
+  return DEFAULT_CURRENCY;
+}
+
+let selectedCurrency = getDefaultCurrency();
+document.getElementById('currencyLabel').textContent = selectedCurrency;
+
+// --- Picker ---
+function openPicker() {
+  renderPicker();
+  document.getElementById('curOverlay').classList.add('open');
+}
+function closePicker() {
+  document.getElementById('curOverlay').classList.remove('open');
+}
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('curOverlay')) closePicker();
+}
+
+function selectCurrency(code) {
+  selectedCurrency = code;
+  document.getElementById('currencyLabel').textContent = code;
+  saveCurrencyHistory(code);
+  closePicker();
+}
+
+function renderPicker() {
+  const quickEl = document.getElementById('curQuick');
+  const scrollEl = document.getElementById('curScroll');
+
+  // Quick buttons: history first, then defaults
+  const history = getCurrencyHistory();
+  const quickSet = [...new Set([...history, ...QUICK_CURRENCIES])].slice(0, 5);
+
+  quickEl.innerHTML = quickSet.map(code => `
+    <button class="cur-quick-btn ${code === selectedCurrency ? 'selected' : ''}"
+      onclick="selectCurrency('${code}')">${code}</button>
+  `).join('');
+
+  scrollEl.innerHTML = ALL_CURRENCIES.map(({code, name}) => `
+    <div class="cur-item ${code === selectedCurrency ? 'selected' : ''}" onclick="selectCurrency('${code}')">
+      <div class="cur-code">${code}</div>
+      <div class="cur-name">${name}</div>
+    </div>
+  `).join('');
+}
+
+// --- App ---
 let allData = [];
 
-function fmt(n) {
-  return Number(n).toLocaleString('ru-RU', { maximumFractionDigits: 0 }) + ' ₽';
+function fmt(n, cur) {
+  const num = Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
+  return cur ? `${num} ${cur}` : num;
 }
 function today() { return new Date().toISOString().split('T')[0]; }
 
@@ -260,13 +473,14 @@ async function loadData() {
 function renderRecent() {
   const el = document.getElementById('recent-list');
   const recent = [...allData].reverse().slice(0, 5);
-  if (!recent.length) { el.innerHTML = '<div class="empty">Нет транзакций</div>'; return; }
+  if (!recent.length) { el.innerHTML = '<div class="empty">No transactions yet</div>'; return; }
   el.innerHTML = recent.map(r => `
     <div class="tx-row">
       <div class="tx-date">${String(r.date).slice(0,10)}</div>
       <div class="tx-cat" style="color:${CAT_COLORS[r.category]||'#888'}">${r.category}</div>
       <div class="tx-comment">${r.comment || '—'}</div>
       <div class="tx-amount">${fmt(r.amount)}</div>
+      <div class="tx-cur">${r.currency || ''}</div>
     </div>`).join('');
 }
 
@@ -274,13 +488,14 @@ function renderStats() {
   const todayStr = today(), monthStr = todayStr.slice(0,7);
   const todayTx = allData.filter(r => String(r.date).slice(0,10) === todayStr);
   const monthTx = allData.filter(r => String(r.date).slice(0,7) === monthStr);
+  // Stats are raw sums — multi-currency conversion comes in next iteration
   const sum = arr => arr.reduce((s,r) => s + Number(r.amount), 0);
   document.getElementById('s-today').textContent = fmt(sum(todayTx));
-  document.getElementById('s-today-c').textContent = todayTx.length + ' трат';
+  document.getElementById('s-today-c').textContent = todayTx.length + ' transactions';
   document.getElementById('s-month').textContent = fmt(sum(monthTx));
-  document.getElementById('s-month-c').textContent = monthTx.length + ' трат';
+  document.getElementById('s-month-c').textContent = monthTx.length + ' transactions';
   document.getElementById('s-total').textContent = fmt(sum(allData));
-  document.getElementById('s-total-c').textContent = allData.length + ' трат';
+  document.getElementById('s-total-c').textContent = allData.length + ' transactions';
 }
 
 function renderChart() {
@@ -307,7 +522,7 @@ function renderCats() {
   const el = document.getElementById('cat-list');
   const monthStr = today().slice(0,7);
   const monthTx = allData.filter(r => String(r.date).slice(0,7) === monthStr);
-  if (!monthTx.length) { el.innerHTML = '<div class="empty">Нет данных за этот месяц</div>'; return; }
+  if (!monthTx.length) { el.innerHTML = '<div class="empty">No data for this month</div>'; return; }
   const cats = {};
   monthTx.forEach(r => { cats[r.category] = (cats[r.category]||0) + Number(r.amount); });
   const sorted = Object.entries(cats).sort((a,b) => b[1]-a[1]);
@@ -322,13 +537,14 @@ function renderCats() {
 
 function renderAll() {
   const el = document.getElementById('all-list');
-  if (!allData.length) { el.innerHTML = '<div class="empty">Нет транзакций</div>'; return; }
+  if (!allData.length) { el.innerHTML = '<div class="empty">No transactions</div>'; return; }
   el.innerHTML = [...allData].reverse().map((r,i) => `
     <div class="tx-row" style="background:${i%2===0?'#1e1e1e':'transparent'};padding:8px 6px;border-radius:2px;border-bottom:none;margin-bottom:2px">
       <div class="tx-date">${String(r.date).slice(0,10)}</div>
       <div class="tx-cat" style="color:${CAT_COLORS[r.category]||'#888'}">${r.category}</div>
       <div class="tx-comment">${r.comment || '—'}</div>
       <div class="tx-amount">${fmt(r.amount)}</div>
+      <div class="tx-cur">${r.currency || ''}</div>
     </div>`).join('');
 }
 
@@ -337,31 +553,32 @@ async function addExpense() {
   const category = document.getElementById('category').value;
   const date = document.getElementById('date').value;
   const comment = document.getElementById('comment').value;
+  const currency = selectedCurrency;
   const status = document.getElementById('status');
   const btn = document.getElementById('submitBtn');
 
-  if (!amount || Number(amount) <= 0) { status.className='status err'; status.textContent='Введи сумму'; return; }
-  if (!date) { status.className='status err'; status.textContent='Выбери дату'; return; }
+  if (!amount || Number(amount) <= 0) { status.className='status err'; status.textContent='Enter amount'; return; }
+  if (!date) { status.className='status err'; status.textContent='Select date'; return; }
 
-  btn.disabled = true; btn.textContent = 'ОТПРАВЛЯЕМ...'; status.className = 'status';
+  btn.disabled = true; btn.textContent = 'SAVING...'; status.className = 'status';
 
   try {
     const res = await fetch(API, {
       method: 'POST',
-      body: JSON.stringify({ amount: Number(amount), category, date, comment })
+      body: JSON.stringify({ amount: Number(amount), category, date, comment, currency })
     });
     const json = await res.json();
     if (json.success) {
-      status.className = 'status ok'; status.textContent = '✓ Добавлено';
+      status.className = 'status ok'; status.textContent = '✓ Added';
       document.getElementById('amount').value = '';
       document.getElementById('comment').value = '';
       document.getElementById('date').value = today();
       loadData();
     } else throw new Error(json.error);
   } catch(e) {
-    status.className = 'status err'; status.textContent = 'Ошибка: ' + e.message;
+    status.className = 'status err'; status.textContent = 'Error: ' + e.message;
   }
-  btn.disabled = false; btn.textContent = 'ДОБАВИТЬ';
+  btn.disabled = false; btn.textContent = 'ADD';
 }
 
 loadData();
