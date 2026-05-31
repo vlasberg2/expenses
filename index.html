@@ -281,7 +281,7 @@
 
 <script>
 const API = 'https://script.google.com/macros/s/AKfycbyu7T5p5cvEpdsDf7yydAMg6m6o718w2fYCT7X-2gYnPFjxuy00ljxFX0q9iQT1CldNbA/exec';
-const FX_API = 'https://api.frankfurter.app/latest?from=USD';
+const RATES_API = API + '?action=rates';
 
 const CAT_COLORS = {
   'Food': '#c8f135', 'Transport': '#35c8f1', 'Housing': '#f1c835',
@@ -380,11 +380,10 @@ async function loadRates() {
   if (fxLoading) return null;
   fxLoading = true;
   try {
-    const res = await fetch(FX_API);
+    const res = await fetch(RATES_API);
     const json = await res.json();
-    // json.rates = { AMD: 390, EUR: 0.92, ... } (relative to 1 USD)
-    fxRates = json.rates;
-    fxRates['USD'] = 1;
+    if (!json.success || !json.rates) throw new Error('bad response');
+    fxRates = json.rates; // already includes USD: 1
     fxLoading = false;
     return fxRates;
   } catch(e) {
